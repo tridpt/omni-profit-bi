@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ProfitPulse BI — Phân Tích Lãi Ròng Thực, Khách Hàng RFM & Tồn Kho Đa Kênh</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <!-- TOP EXECUTIVE HEADER -->
+  <header class="topbar">
+    <div class="brand-block">
+      <div class="brand-logo">📈</div>
+      <div>
+        <div class="brand-title-row">
+          <h1 class="brand-title">ProfitPulse BI</h1>
+          <span class="port-pill">v2.0 Decision Science • SQL + SciPy • Port 8045</span>
+        </div>
+        <p class="brand-sub">Hệ Thống Phân Tích Lãi Ròng Thực (Unit Economics), Giữ Chân Khách Hàng RFM &amp; Tồn Kho ABC-XYZ Đa Kênh</p>
+      </div>
+    </div>
+
+    <div class="toolbar-actions">
+      <div class="dataset-selector-wrap">
+        <label for="datasetSelect">Kho dữ liệu:</label>
+        <select id="datasetSelect" class="ctrl-select dataset-select"></select>
+        <button id="deleteDatasetBtn" class="btn btn-danger-ghost hidden" title="Xóa bộ dữ liệu tải lên này">🗑️</button>
+      </div>
+
+      <button id="openImportModalBtn" class="btn btn-secondary">
+        <span>📥</span> Nạp Excel / CSV Thực Tế
+      </button>
+      <button id="exportExecReportBtn" class="btn btn-primary">
+        <span>📊</span> Xuất Báo Cáo CEO (.xlsx)
+      </button>
+    </div>
+  </header>
+
+  <!-- SCENARIO BANNER & GLOBAL FILTERS -->
+  <section class="filter-strip">
+    <div class="scenario-meta">
+      <span id="industryBadge" class="industry-badge">E-Commerce</span>
+      <span id="scenarioDesc" class="scenario-desc">Đang tải thông tin kho dữ liệu...</span>
+    </div>
+    <div class="global-filters" id="globalFilterGroup">
+      <div class="filter-item">
+        <label for="channelFilter">Kênh bán:</label>
+        <select id="channelFilter" class="ctrl-select">
+          <option value="ALL">Tất cả các kênh</option>
+        </select>
+      </div>
+      <div class="filter-item">
+        <label for="startDateFilter">Từ ngày:</label>
+        <input type="date" id="startDateFilter" class="ctrl-input" />
+      </div>
+      <div class="filter-item">
+        <label for="endDateFilter">Đến ngày:</label>
+        <input type="date" id="endDateFilter" class="ctrl-input" />
+      </div>
+      <button id="resetFilterBtn" class="btn btn-ghost">Đặt lại bộ lọc</button>
+    </div>
+  </section>
+
+  <!-- NAVIGATION TABS -->
+  <nav class="nav-tabs" role="tablist">
+    <button class="tab-btn active" data-tab="tab-pnl">
+      💰 1. Giải Phẫu Lãi Ròng &amp; Phí Ẩn
+    </button>
+    <button class="tab-btn" data-tab="tab-rfm">
+      👥 2. Khách Hàng RFM, Cohort &amp; Cứu Khách
+    </button>
+    <button class="tab-btn" data-tab="tab-inventory">
+      📦 3. Tồn Kho ABC-XYZ &amp; Đặt Hàng
+    </button>
+    <button class="tab-btn" data-tab="tab-simulator">
+      🎛️ 4. Giả Lập Giá &amp; Điểm Hòa Vốn
+    </button>
+    <button class="tab-btn" data-tab="tab-predictive">
+      🔮 5. Dự Báo 30N, Kiểm Định p-value &amp; Combo
+    </button>
+    <button class="tab-btn" data-tab="tab-sql">
+      🗄️ 6. Phòng Lab SQL Thực Chiến (10 Mẫu)
+    </button>
+  </nav>
+
+  <!-- MAIN WORKSPACE -->
+  <main class="workspace">
+    <!-- ================================================================== -->
+    <!-- TAB 1: UNIT ECONOMICS & TRUE P&L                                   -->
+    <!-- ================================================================== -->
+    <section id="tab-pnl" class="tab-panel active">
+      <div id="pnlKpiGrid" class="kpi-grid"></div>
+
+      <div class="grid-2col">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2>Thác Nước Bóc Tách Lợi Nhuận Thực (P&amp;L Waterfall)</h2>
+              <p class="card-sub">Từ tổng GMV đơn thành công trừ từng tầng chiết khấu, giá vốn, phí sàn, Affiliate, đơn hoàn và Ads</p>
+            </div>
+          </div>
+          <div id="waterfallChart" class="chart-box"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2 id="varianceTitle">Giải Phẫu Nguyên Nhân Tăng/Giảm Lãi Ròng (MoM Bridge)</h2>
+              <p class="card-sub">Tự động phân rã biến động tháng gần nhất theo Sản lượng, Voucher, Cơ cấu hàng, Phí &amp; Ads</p>
+            </div>
+          </div>
+          <div id="varianceChart" class="chart-box"></div>
+          <div id="varianceInsights" class="insight-callout"></div>
+        </div>
+      </div>
+
+      <div class="grid-2col">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2>So Sánh Hiệu Quả Thực Tế Giữa Các Kênh Bán</h2>
+              <p class="card-sub">Đối chiếu Doanh thu thuần so với Gánh nặng phí + Ads và Biên lợi nhuận ròng từng kênh</p>
+            </div>
+          </div>
+          <div id="channelTableWrap" class="table-wrap"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2>Xu Hướng Doanh Thu Thuần, Chi Phí &amp; Lãi Ròng Theo Tháng</h2>
+              <p class="card-sub">Phát hiện hiện tượng "GMV tăng vọt mùa Mega Sale nhưng biên lợi nhuận bị nén"</p>
+            </div>
+          </div>
+          <div id="monthlyTrendChart" class="chart-box"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header card-header-wrap">
+          <div>
+            <h2>Ma Trận Sức Khỏe Lợi Nhuận Từng Mã Hàng SKU (Cash Cows vs Profit Bleeders)</h2>
+            <p class="card-sub">Chỉ mặt những mã hàng doanh số cao nhưng âm tiền mặt thực tế và đề xuất hành động xử lý</p>
+          </div>
+          <div class="pill-filters" id="skuBadgeFilters">
+            <button class="pill active" data-badge="ALL">Tất cả SKU</button>
+            <button class="pill pill-danger" data-badge="BLEEDER">🩸 Đang Lỗ Ngầm</button>
+            <button class="pill pill-success" data-badge="STAR">🌟 Chủ Lực Lãi Cao</button>
+            <button class="pill" data-badge="CASH_COW">🐄 Bò Sữa</button>
+          </div>
+        </div>
+        <div id="skuPnlTableWrap" class="table-wrap"></div>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- TAB 2: RFM, COHORT RETENTION & RESCUE BUDGET OPTIMIZER             -->
+    <!-- ================================================================== -->
+    <section id="tab-rfm" class="tab-panel">
+      <div id="rfmSummaryGrid" class="kpi-grid kpi-grid-4"></div>
+
+      <div class="grid-2col">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2>Phân Khúc Khách Hàng Động RFM (`SQL NTILE(5)`)</h2>
+              <p class="card-sub">Đo lường Giá trị vòng đời lợi nhuận ròng (Net Profit LTV) đối chiếu Chi phí thu hút (CAC)</p>
+            </div>
+          </div>
+          <div id="rfmSegmentsWrap" class="table-wrap"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2>Ma Trận Giữ Chân Khách Hàng Cohort Theo Tháng (`M0 ➔ M5`)</h2>
+              <p class="card-sub">Tỷ lệ % khách quay lại mua hàng qua từng tháng kể từ đơn đầu tiên &amp; hệ số hoàn vốn LTV/CAC</p>
+            </div>
+          </div>
+          <div id="cohortHeatmapWrap" class="table-wrap"></div>
+        </div>
+      </div>
+
+      <div class="card accent-card">
+        <div class="card-header card-header-wrap">
+          <div>
+            <h2>🎯 Bộ Tối Ưu Hóa Ngân Sách Giữ Chân &amp; Cứu Khách Hàng Rời Bỏ (`Knapsack ROI Optimizer`)</h2>
+            <p class="card-sub">Phân bổ ngân sách giới hạn vào đúng tệp khách có Lợi nhuận tăng thêm kỳ vọng trên mỗi 1đ chi phí cao nhất</p>
+          </div>
+          <div class="budget-controls">
+            <label for="retentionBudgetInput">Ngân sách chiến dịch (VNĐ):</label>
+            <input type="number" id="retentionBudgetInput" class="ctrl-input budget-input" value="15000000" step="1000000" min="1000000" max="200000000" />
+            <button id="runOptimizerBtn" class="btn btn-primary">⚡ Chạy Tối Ưu Phân Bổ</button>
+            <button id="exportTargetCsvBtn" class="btn btn-secondary">📥 Xuất DS Khách Hàng (.CSV)</button>
+          </div>
+        </div>
+        <div id="optimizerKpiStrip" class="mini-kpi-strip"></div>
+        <div id="optimizerTableWrap" class="table-wrap"></div>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- TAB 3: INVENTORY ABC-XYZ & REORDER ENGINE                          -->
+    <!-- ================================================================== -->
+    <section id="tab-inventory" class="tab-panel">
+      <div id="invSummaryGrid" class="kpi-grid kpi-grid-4"></div>
+
+      <div class="grid-inv-layout">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2>Ma Trận 9 Ô `ABC-XYZ` (Click Để Lọc)</h2>
+              <p class="card-sub">`ABC`: Đóng góp lợi nhuận Pareto • `XYZ`: Độ ổn định cầu theo tuần (CV)</p>
+            </div>
+            <button id="clearAbcFilterBtn" class="btn btn-ghost btn-sm hidden">Bỏ lọc ô</button>
+          </div>
+          <div id="abcXyzMatrix" class="abc-matrix-grid"></div>
+          <div class="matrix-legend">
+            <div><strong>AX / BX:</strong> Cầu đều, lãi cao ➔ Đặt hàng tự động JIT, cấm đứt hàng.</div>
+            <div><strong>AY / AZ:</strong> Chủ lực nhưng cầu giật cục ➔ Cần Safety Stock cao.</div>
+            <div><strong>CZ:</strong> Đóng góp thấp, cầu thất thường ➔ Xả kho, ngừng ôm vốn.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2>Kế Hoạch Nhập Hàng Khẩn (ROP) &amp; Giải Phóng Vốn Tồn Đọng</h2>
+              <p class="card-sub">Tính toán Tồn kho an toàn (`Safety Stock = Z·σ·√LT`), Điểm đặt hàng lại (`ROP`) và Số ngày đủ bán (`DOI`)</p>
+            </div>
+          </div>
+          <div id="inventoryTableWrap" class="table-wrap"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- TAB 4: ELASTIC WHAT-IF PRICING & BREAK-EVEN SIMULATOR              -->
+    <!-- ================================================================== -->
+    <section id="tab-simulator" class="tab-panel">
+      <div class="grid-sim-layout">
+        <div class="card sim-controls-card">
+          <div class="card-header">
+            <div>
+              <h2>🎛️ Bảng Điều Khiển Giả Lập (What-If)</h2>
+              <p class="card-sub">Mô phỏng co giãn cầu theo giá, phí sàn tăng &amp; hiệu quả khuyến mãi</p>
+            </div>
+            <button id="resetSimBtn" class="btn btn-ghost btn-sm">Mặc định (0%)</button>
+          </div>
+
+          <div class="sim-scope-group">
+            <div class="form-field">
+              <label for="simSkuSelect">Phạm vi Sản phẩm (SKU):</label>
+              <select id="simSkuSelect" class="ctrl-select"></select>
+            </div>
+            <div class="form-field">
+              <label for="simChannelSelect">Phạm vi Kênh bán:</label>
+              <select id="simChannelSelect" class="ctrl-select"></select>
+            </div>
+          </div>
+
+          <div class="sliders-stack">
+            <div class="slider-row">
+              <div class="slider-label-line">
+                <span>1. Điều chỉnh Giá niêm yết</span>
+                <strong id="valPriceChg">0%</strong>
+              </div>
+              <input type="range" id="simPriceChg" min="-25" max="35" step="1" value="0" />
+            </div>
+
+            <div class="slider-row">
+              <div class="slider-label-line">
+                <span>2. Thay đổi Voucher Shop (điểm %)</span>
+                <strong id="valVoucherChg">0 pt</strong>
+              </div>
+              <input type="range" id="simVoucherChg" min="-15" max="20" step="0.5" value="0" />
+            </div>
+
+            <div class="slider-row">
+              <div class="slider-label-line">
+                <span>3. Biến động Phí sàn / Affiliate (điểm %)</span>
+                <strong id="valFeeChg">0 pt</strong>
+              </div>
+              <input type="range" id="simFeeChg" min="-10" max="15" step="0.5" value="0" />
+            </div>
+
+            <div class="slider-row">
+              <div class="slider-label-line">
+                <span>4. Biến động Tỷ lệ đơn hoàn (điểm %)</span>
+                <strong id="valReturnChg">0 pt</strong>
+              </div>
+              <input type="range" id="simReturnChg" min="-10" max="15" step="0.5" value="0" />
+            </div>
+
+            <div class="slider-row">
+              <div class="slider-label-line">
+                <span>5. Biến động Giá vốn COGS (%)</span>
+                <strong id="valCogsChg">0%</strong>
+              </div>
+              <input type="range" id="simCogsChg" min="-20" max="25" step="1" value="0" />
+            </div>
+
+            <div class="slider-row">
+              <div class="slider-label-line">
+                <span>6. Điều chỉnh Ngân sách Ads (%)</span>
+                <strong id="valAdsChg">0%</strong>
+              </div>
+              <input type="range" id="simAdsChg" min="-60" max="100" step="5" value="0" />
+            </div>
+
+            <div class="slider-row">
+              <div class="slider-label-line">
+                <span>Hệ số co giãn cầu theo giá (`ε`)</span>
+                <strong id="valElasticity">Mặc định SKU</strong>
+              </div>
+              <input type="range" id="simElasticity" min="-3.0" max="-0.3" step="0.1" value="-1.3" />
+              <label class="checkbox-inline">
+                <input type="checkbox" id="useCustomElasticity" /> Ghi đè hệ số co giãn thủ công
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="sim-results-col">
+          <div id="simAlertBanner" class="sim-alert hidden"></div>
+          <div id="simComparisonCards" class="kpi-grid kpi-grid-3"></div>
+
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2>Đường Cong Nhạy Cảm Giá &amp; Điểm Tối Ưu Hóa Lợi Nhuận (`-20% ➔ +25%`)</h2>
+                <p class="card-sub">Tìm mức tăng/giảm giá mang lại Tổng Lãi Ròng Thực cực đại dưới tác động co giãn sản lượng</p>
+              </div>
+            </div>
+            <div id="simCurveChart" class="chart-box"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2>Bảng Đối Chiếu Kinh Tế Đơn Vị (Unit Economics Hiện Tại vs Kịch Bản Mới)</h2>
+            </div>
+            <div id="simDetailTable" class="table-wrap"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- TAB 5: PREDICTIVE FORECASTING, SCIPY HYPOTHESIS & MARKET BASKET    -->
+    <!-- ================================================================== -->
+    <section id="tab-predictive" class="tab-panel">
+      <div id="predKpiGrid" class="kpi-grid kpi-grid-4"></div>
+
+      <div class="card accent-card">
+        <div class="card-header card-header-wrap">
+          <div>
+            <h2>🔮 Dự Báo Dòng Tiền Doanh Thu 30 Ngày Tới &amp; Dải Tin Cậy (`P10 • P50 • P90 Fan Chart`)</h2>
+            <p class="card-sub">
+              Mô hình <strong>Holt Damped Trend + Chu kỳ 7 Ngày + Hệ số Ngày Đôi</strong> (có kiểm định chéo Out-of-Sample Backtest 21 ngày cuối)
+            </p>
+          </div>
+          <span id="forecastModelBadge" class="badge badge-cow">Holt Seasonal Model</span>
+        </div>
+        <div id="forecastFanChart" class="chart-box"></div>
+      </div>
+
+      <div class="grid-2col">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2>🧪 Kiểm Định Giả Thuyết Thống Kê (`SciPy Welch's t-test &amp; Chi-Square χ²`)</h2>
+              <p class="card-sub">Đánh giá ý nghĩa thống kê (`p-value &lt; 0.05`) của chiến dịch Sale, hiệu ứng nhịn mua chờ Sale và rủi ro kênh bán</p>
+            </div>
+          </div>
+          <div id="hypothesisTestsWrap" class="stats-cards-stack"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2>🚨 Rada Cảnh Báo Bất Thường Tự Động (`SPC Control Z-Score ≥ 2.3σ`)</h2>
+              <p class="card-sub">Tự động quét toàn bộ chuỗi ngày và mã hàng để bắt các điểm vọt tỷ lệ hoàn đơn hoặc rò rỉ ngân sách Ads</p>
+            </div>
+          </div>
+          <div id="anomaliesListWrap" class="stats-cards-stack"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2>🛒 Khai Phá Giỏ Hàng (`Market Basket Lift`) &amp; Tự Động Ghép Combo Giải Cứu Mã Lỗ</h2>
+            <p class="card-sub">
+              Phát hiện cặp sản phẩm có xác suất mua kèm cao hơn ngẫu nhiên (`Lift &gt; 1.0`) ➔ Gộp chung 1 kiện hàng (giảm 8% giá Combo cho khách nhưng tiết kiệm hộp đóng gói, phí ship &amp; chi phí Ads đơn lẻ)
+            </p>
+          </div>
+        </div>
+        <div id="marketBasketTableWrap" class="table-wrap"></div>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- TAB 6: LIVE SQL ANALYTICS WORKBENCH                                -->
+    <!-- ================================================================== -->
+    <section id="tab-sql" class="tab-panel">
+      <div class="sql-workbench-grid">
+        <aside class="card sql-sidebar">
+          <div class="card-header">
+            <div>
+              <h2>📚 10 Mẫu SQL Thực Chiến DA</h2>
+              <p class="card-sub">CTE • Window • RFM • Cohort • Market Basket Lift</p>
+            </div>
+          </div>
+          <div id="sqlTemplateList" class="template-list"></div>
+
+          <div class="schema-section">
+            <h3>🗂️ Lược Đồ Kho Dữ Liệu (SQLite)</h3>
+            <div id="sqlSchemaAccordion" class="schema-list"></div>
+          </div>
+        </aside>
+
+        <div class="sql-main-col">
+          <div class="card sql-editor-card">
+            <div class="card-header card-header-wrap">
+              <div>
+                <h2 id="activeSqlTitle">Trình Truy Vấn Kho Dữ Liệu Read-Only Sandbox</h2>
+                <p id="activeSqlQuestion" class="card-sub">Chọn một bài toán mẫu bên trái hoặc tự viết câu lệnh SELECT / WITH CTE của bạn</p>
+              </div>
+              <div class="sql-btn-group">
+                <button id="runSqlBtn" class="btn btn-primary">▶ Chạy SQL (`Ctrl + Enter`)</button>
+                <button id="exportSqlCsvBtn" class="btn btn-secondary">📥 Tải Kết Quả (.CSV)</button>
+              </div>
+            </div>
+            <textarea id="sqlEditor" class="sql-textarea" spellcheck="false"></textarea>
+            <div id="sqlStatusBar" class="sql-status-bar">Sẵn sàng thực thi trên SQLite Analytical Warehouse.</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2>Bảng Kết Quả Truy Vấn</h2>
+            </div>
+            <div id="sqlResultWrap" class="table-wrap sql-result-table"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- FLOATING TOOLTIP FOR CHARTS -->
+  <div id="chartTooltip" class="chart-tooltip hidden"></div>
+
+  <!-- MODAL: IMPORT EXCEL / CSV -->
+  <div id="importModal" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>📥 Nạp Dữ Liệu Đơn Hàng Thực Tế (.xlsx / .csv)</h2>
+        <button id="closeImportModalBtn" class="btn btn-ghost btn-sm">✕</button>
+      </div>
+      <p class="modal-desc">
+        Hệ thống tự động nhận diện tiêu đề cột tiếng Việt/Anh (Shopee, TikTok Shop, POS, KiotViet) và <strong>làm sạch dữ liệu bẩn</strong>
+        (chuỗi tiền tệ kiểu <code>"389.000 đ"</code>, ngày tháng lệch chuẩn <code>dd/mm/yyyy</code>, dòng trùng lặp).
+      </p>
+
+      <div class="template-download-box">
+        <div>
+          <strong>Chưa có sẵn file xuất sàn?</strong>
+          <div class="muted-sm">Tải file Excel mẫu có sẵn dữ liệu minh họa &amp; hướng dẫn từng cột để điền số liệu thật của shop.</div>
+        </div>
+        <a href="/api/export/template.xlsx" class="btn btn-secondary">📄 Tải File Mẫu (.xlsx)</a>
+      </div>
+
+      <form id="importForm" class="import-form">
+        <div class="form-field">
+          <label for="customDatasetName">Tên gợi nhớ cho bộ dữ liệu:</label>
+          <input type="text" id="customDatasetName" class="ctrl-input" placeholder="VD: Shop Thời Trang Tháng 10/2026" />
+        </div>
+        <div class="dropzone" id="fileDropzone">
+          <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" required />
+          <div class="dropzone-label" id="dropzoneText">
+            <strong>Kéo thả tệp .xlsx hoặc .csv vào đây</strong> hoặc bấm để chọn tệp từ máy tính (Tối đa 25MB)
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" id="submitImportBtn" class="btn btn-primary">🚀 Phân Tích &amp; Nạp Vào Kho SQL</button>
+        </div>
+      </form>
+
+      <div id="importAuditResult" class="audit-result hidden"></div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
